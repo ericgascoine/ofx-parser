@@ -50,7 +50,7 @@ module OfxParser
   class Ofx
     attr_accessor :header, :sign_on, :signup_account_info,
                   :bank_accounts, :credit_accounts,
-                  :investment_accounts
+                  :investment_accounts, :securities
 
     def accounts
       [ bank_accounts, credit_accounts, investment_accounts ].flatten!.compact!
@@ -196,6 +196,38 @@ module OfxParser
 
   class Institute
     attr_accessor :name, :id
+  end
+
+  class SecurityId
+    attr_accessor :unique_id, :unique_id_type
+  end
+
+  class SecurityInfo
+    include MonetarySupport
+    extend MonetaryClassSupport
+
+    attr_accessor :security_id, :ticker, :fi_id, :rating, :unit_price, :date_of_unit_price, :currency, :memo
+
+    monetary_vars :unit_price
+
+    STOCK_TYPE = {
+        :COMMON         => 'Common',
+        :PREFERRED      => 'Preferred',
+        :CONVERTIBLE    => 'Convertible',
+        :OTHER          => 'Other'
+    }
+  end
+
+  class StockInfo
+
+    attr_accessor :security_info, :stock_type, :yeild, :yeild_as_of_date, :asset_class, :f1_asset_class
+
+    STOCK_TYPE = {
+        :COMMON         => 'Common',
+        :PREFERRED      => 'Preferred',
+        :CONVERTIBLE    => 'Convertible',
+        :OTHER          => 'Other'
+    }
   end
 
 end

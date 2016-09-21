@@ -1,2 +1,6 @@
 doc
 ri
+.idea/
+.ruby*
+Gemfile
+Gemfile.lock

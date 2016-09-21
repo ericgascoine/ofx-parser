@@ -4,7 +4,7 @@ require 'time'
 require 'date'
 
 %w(ofx mcc).each do |fn|
-  require File.dirname(__FILE__) + "/#{fn}"
+  # require File.dirname(__FILE__) + "/#{fn}"
 end
 
 module OfxParser
@@ -79,7 +79,18 @@ module OfxParser
         build_credit(fragment)
       end
 
+
       # Investments (?)
+      #build_investment((doc/"SIGNONMSGSRQV1"))
+
+      # Securities
+      security_fragment = (doc/"SECLISTMSGSRSV1/SECLIST/STOCKINFO")
+      ofx.securities = security_fragment.collect do |fragment|
+        security = build_stock_info(fragment)
+        puts security.inspect
+        security
+      end
+
       #build_investment((doc/"SIGNONMSGSRQV1"))
 
       ofx
@@ -185,5 +196,36 @@ module OfxParser
       status
     end
 
+    def self.build_security_id(doc)
+      security_id = SecurityId.new
+      security_id.unique_id = (doc/"UNIQUEID").inner_text
+      security_id.unique_id_type = (doc/"UNIQUEIDTYPE").inner_text
+      security_id
+    end
+
+    def self.build_security_info(doc)
+      puts "building a security for #{doc}"
+      security_info = SecurityInfo.new
+      security_info.security_id = build_security_id (doc/"SECID")
+      security_info.ticker = (doc/"TICKER").inner_text
+      security_info.fi_id = (doc/"FIID").inner_text
+      security_info.rating = (doc/"RATING").inner_text
+      security_info.unit_price = (doc/"UNITPRICE").inner_text
+      security_info.date_of_unit_price = parse_datetime((doc/"DTASOF").inner_text) unless ((doc/"DTASOF").inner_text).empty?
+      security_info.currency = (doc/"CURRENCY").inner_text
+      security_info.memo = (doc/"MEMO").inner_text
+      security_info
+    end
+
+    def self.build_stock_info(doc)
+      stock_info = StockInfo.new
+      stock_info.security_info = build_security_info(doc/"SECINFO")
+      stock_info.stock_type = (doc/"STOCKTYPE").inner_text
+      stock_info.yeild = (doc/"YIELD").inner_text
+      stock_info.yeild_as_of_date = parse_datetime((doc/"DTYEILDASOF").inner_text) unless ((doc/"DTYEILDASOF").inner_text).empty?
+      stock_info.asset_class = (doc/"ASSETCLASS").inner_text
+      stock_info.f1_asset_class = (doc/"F1ASSETCLASS").inner_text
+      stock_info
+    end
   end
 end
