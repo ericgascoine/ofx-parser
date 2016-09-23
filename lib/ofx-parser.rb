@@ -80,18 +80,18 @@ module OfxParser
       end
 
 
-      # Investments (?)
-      #build_investment((doc/"SIGNONMSGSRQV1"))
-
       # Securities
       security_fragment = (doc/"SECLISTMSGSRSV1/SECLIST/STOCKINFO")
       ofx.securities = security_fragment.collect do |fragment|
-        security = build_stock_info(fragment)
-        puts security.inspect
-        security
+        build_stock_info(fragment)
       end
 
-      #build_investment((doc/"SIGNONMSGSRQV1"))
+      # Investments (?)
+      investment_account_fragment = (doc/"INVSTMTMSGSRSV1/INVSTMTTRNRS/INVSTMTRS")
+      ofx.investment_accounts = investment_account_fragment.collect do |fragment|
+        build_investment_account(fragment)
+      end
+
 
       ofx
     end
@@ -204,7 +204,6 @@ module OfxParser
     end
 
     def self.build_security_info(doc)
-      puts "building a security for #{doc}"
       security_info = SecurityInfo.new
       security_info.security_id = build_security_id (doc/"SECID")
       security_info.ticker = (doc/"TICKER").inner_text
@@ -227,5 +226,82 @@ module OfxParser
       stock_info.f1_asset_class = (doc/"F1ASSETCLASS").inner_text
       stock_info
     end
+
+    def self.build_investment_account(doc)
+      acct = InvestmentAccount.new
+      acct.broker_id=(doc/"INVACCTFROM/BROKERID").inner_text
+      acct.account_id=(doc/"INVACCTFROM/ACCTID").inner_text
+      acct.availcash = (doc/"INVBAL/AVAILCASH").inner_text
+      acct.margin_balance = (doc/"INVBAL/MARGINBALANCE").inner_text
+      acct.short_balance = (doc/"INVBAL/SHORTBALANCE").inner_text
+
+      statement = Statement.new
+      acct.statement=statement
+
+      #-----------------------------------------------------------------------
+      # Ideally we wouldn't need 2 separate classes for different types of positions/transactions.
+      # Need to find some way to parse informaton based on "POS****" or "BUY****"
+
+      statement.stock_positions = (doc/"INVPOSLIST/POSSTOCK").collect do |p|
+        build_stock_position(p)
+      end
+
+      statement.opt_positions = (doc/"INVPOSLIST/POSOPT").collect do |p|
+        build_opt_position(p)
+      end
+
+      statement.stock_transactions = (doc/"INVTRANLIST/BUYSTOCK").collect do |t|
+        build_stock_transactions(t)
+      end
+      acct
+    end
+
+    def self.build_stock_transactions(t)
+      stock_transaction = Stock_Transaction.new
+      stock_transaction.transid = (t/"INVBUY/INVTRAN/FITID").inner_text
+      stock_transaction.tradedate = parse_datetime((t/"INVBUY/INVTRAN/DTTRADE").inner_text) unless (t/"INVBUY/INVTAN/DTTRADE").inner_text.empty?
+      stock_transaction.settledate = parse_datetime((t/"INVBUY/INVTRAN/DTSETTLE").inner_text) unless (t/"INVBUY/INVTAN/DTSETTLE").inner_text.empty?
+      stock_transaction.uniqueid = (t/"INVBUY/SECID/UNIQUEID").inner_text
+      stock_transaction.uniqueid_type = (t/"INVBUY/SECID/UNIQUEIDTYPE").inner_text
+      stock_transaction.units = (t/"INVBUY/UNITS").inner_text
+      stock_transaction.unitprice = (t/"INVBUY/UNITPRICE").inner_text
+      stock_transaction.commission = (t/"INVBUY/UNITPRICE").inner_text
+      stock_transaction.total = (t/"INVBUY/TOTAL").inner_text
+      stock_transaction.subacctsec = (t/"INVBUY/SUBACCTSEC").inner_text
+      stock_transaction.subacctfund = (t/"INVBUY/SUBACCTFUND").inner_text
+      stock_transaction.type = (t/"BUYTYPE").inner_text
+      stock_transaction
+    end
+
+
+    def self.build_stock_position(p)
+      stock_position = Stock_Position.new
+      stock_position.uniqueid = (p/"INVPOS/SECID/UNIQUEID").inner_text
+      stock_position.uniqueid_type = (p/"INVPOS/SECID/UNIQUEIDTYPE").inner_text
+      stock_position.heldinacct = (p/"INVPOS/HELDINACCT").inner_text
+      stock_position.type = (p/"INVPOS/POSTYPE").inner_text
+      stock_position.units = (p/"INVPOS/UNITS").inner_text
+      stock_position.unitprice = (p/"INVPOS/UNITPRICE").inner_text
+      stock_position.pricedate = parse_datetime((p/"INVPOS/DTPRICEASOF").inner_text)
+      stock_position.memo = (p/"INVPOS/MEMO").inner_text
+      stock_position
+    end
+
+    def self.build_opt_position(p)
+      opt_position = Opt_Position.new
+      opt_position.uniqueid = (p/"INVPOS/SECID/UNIQUEID").inner_text
+      opt_position.uniqueid_type = (p/"INVPOS/SECID/UNIQUEIDTYPE").inner_text
+      opt_position.heldinacct = (p/"INVPOS/HELDINACCT").inner_text
+      opt_position.type = (p/"INVPOS/POSTYPE").inner_text
+      opt_position.units = (p/"INVPOS/UNITS").inner_text
+      opt_position.unitprice = (p/"INVPOS/UNITPRICE").inner_text
+      opt_position.mktval = (p/"INVPOS/MKTVAL").inner_text
+      opt_position.pricedate = parse_datetime((p/"INVPOS/DTPRICEASOF").inner_text)
+      opt_position.memo = (p/"INVPOS/MEMO").inner_text
+      opt_position
+    end
   end
 end
+
+
+

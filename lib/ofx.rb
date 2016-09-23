@@ -230,4 +230,73 @@ module OfxParser
     }
   end
 
+  class InvestmentAccount < Account
+    attr_accessor :broker_id, :account_id, :positions, :margin_balance, :short_balance, :cash_balance, :availcash, :balances
+
+    # include MonetarySupport
+    #    monetary_vars :margin_balance, :short_balance, :cash_balance
+  end
+
+
+  class Statement
+    attr_accessor :currency, :transactions, :start_date, :end_date, :stock_positions, :opt_positions, :stock_transactions
+  end
+
+  class Transaction
+    attr_accessor :type, :date, :amount, :fit_id, :check_number, :sic, :memo, :payee
+
+    include MonetarySupport
+    #   monetary_vars :amount
+
+    TYPE = {
+        :CREDIT      => "Generic credit",
+        :DEBIT       => "Generic debit",
+        :INT         => "Interest earned or paid ",
+        :DIV         => "Dividend",
+        :FEE         => "FI fee",
+        :SRVCHG      => "Service charge",
+        :DEP         => "Deposit",
+        :ATM         => "ATM debit or credit",
+        :POS         => "Point of sale debit or credit ",
+        :XFER        => "Transfer",
+        :CHECK       => "Check",
+        :PAYMENT     => "Electronic payment",
+        :CASH        => "Cash withdrawal",
+        :DIRECTDEP   => "Direct deposit",
+        :DIRECTDEBIT => "Merchant initiated debit",
+        :REPEATPMT   => "Repeating payment/standing order",
+        :OTHER       => "Other"
+    }
+
+    def type_desc
+      TYPE[type]
+    end
+
+    undef type
+    def type
+      @type.to_s.strip.upcase.to_sym
+    end
+
+    undef sic
+    def sic
+      @sic == "" ? nil : @sic
+    end
+
+    def sic_desc
+      Mcc::CODES[sic]
+    end
+  end
+
+  class Stock_Position
+    attr_accessor :uniqueid, :uniqueid_type, :heldinacct, :type, :units, :unitprice, :pricedate, :memo
+  end
+
+  class Opt_Position
+    attr_accessor :uniqueid, :uniqueid_type, :heldinacct, :type, :units, :unitprice, :pricedate, :memo, :mktval
+  end
+
+  class Stock_Transaction
+    attr_accessor :transid, :tradedate, :settledate, :uniqueid, :uniqueid_type, :units, :unitprice, :commission, :total, :subacctsec, :subacctfund, :type
+  end
+
 end
