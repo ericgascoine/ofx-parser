@@ -10,10 +10,13 @@ end
 module OfxParser
   VERSION = '1.1.0'
 
+  class UnprocessableFile < StandardError
+  end
   class OfxParser
 
     # Creates and returns an Ofx instance when given a well-formed OFX document,
     # complete with the mandatory key:pair header.
+    # It may throw and Errors::UnprocessableEntity if the file appears to be completely invalid
     def self.parse(ofx)
       ofx = ofx.respond_to?(:read) ? ofx.read.to_s : ofx.to_s
 
@@ -34,6 +37,10 @@ module OfxParser
     # * body as an evily pre-processed string ready for parsing by hpricot.
     def self.pre_process(ofx)
       header, body = ofx.split(/\n{2,}|:?<OFX>/, 2)
+
+      if header.nil? || body.nil?
+        raise UnprocessableFile
+      end
 
       header = Hash[*header.gsub(/^\r?\n+/,'').split(/\r\n/).collect do |e|
         e.split(/:/,2)
@@ -64,7 +71,9 @@ module OfxParser
 
       ofx = Ofx.new
 
-      ofx.sign_on = build_signon((doc/"SIGNONMSGSRSV1/SONRS"))
+      signon_text =  (doc/"SIGNONMSGSRSV1/SONRS")
+      raise UnprocessableFile if signon_text.empty?
+      ofx.sign_on = build_signon signon_text
       ofx.signup_account_info = build_info((doc/"SIGNUPMSGSRSV1/ACCTINFOTRNRS"))
 
       # Bank Accounts
